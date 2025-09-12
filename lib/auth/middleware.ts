@@ -76,3 +76,18 @@ export function requireRole(roles: string[]) {
       return handler(authenticatedRequest)
     }
 }
+
+export async function verifyAuthToken(
+  request: NextRequest,
+): Promise<{ success: boolean; user?: JWTPayload & { id: string } }> {
+  const user = await authenticateRequest(request)
+
+  if (!user) {
+    return { success: false }
+  }
+
+  return {
+    success: true,
+    user: { ...user, id: user.userId },
+  }
+}

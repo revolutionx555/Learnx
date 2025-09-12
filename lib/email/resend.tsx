@@ -1,7 +1,7 @@
 import { Resend } from "resend"
-import { emailConfig } from "@/lib/config/environment"
+import { env } from "@/lib/env"
 
-const resend = new Resend(emailConfig.apiKey)
+const resend = new Resend(env.RESEND_API_KEY)
 
 export interface EmailTemplate {
   to: string
@@ -36,7 +36,7 @@ export interface PasswordResetEmailData {
 export const emailTemplates = {
   welcome: (data: WelcomeEmailData): EmailTemplate => ({
     to: "",
-    subject: `Welcome to ${emailConfig.fromName}!`,
+    subject: `Welcome to ${env.NEXT_PUBLIC_APP_NAME || "Learn X"}!`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h1 style="color: #2563eb;">Welcome to Learn X!</h1>
@@ -135,13 +135,13 @@ export const emailTemplates = {
 
 export async function sendEmail(template: EmailTemplate) {
   try {
-    if (!emailConfig.apiKey) {
-      console.warn("Resend API key not configured, email not sent")
+    if (!env.RESEND_API_KEY || env.RESEND_API_KEY === "re_V8SU3DpC_QaUAVAFfFLrPGrRhn21sQ425") {
+      console.warn("Resend API key not configured or using fallback, email not sent")
       return { success: false, error: "Email service not configured" }
     }
 
     const result = await resend.emails.send({
-      from: `${emailConfig.fromName} <${emailConfig.fromEmail}>`,
+      from: `${env.NEXT_PUBLIC_APP_NAME || "Learn X"} <noreply@learnx.com>`,
       to: template.to,
       subject: template.subject,
       html: template.html,

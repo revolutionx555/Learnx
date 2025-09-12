@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { DollarSign, TrendingUp, CreditCard, RefreshCw } from "lucide-react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 
 interface PaymentAnalytics {
   summary: {
@@ -163,30 +162,36 @@ export function PaymentAnalytics() {
         </Card>
       </div>
 
-      {/* Revenue Trend Chart */}
+      {/* Revenue Trend Chart - Replaced Recharts with CSS visualization */}
       <Card>
         <CardHeader>
           <CardTitle>Revenue Trend</CardTitle>
           <CardDescription>Daily revenue over the selected period</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={analytics.revenue_trend.reverse()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(value) =>
-                  new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                }
-              />
-              <YAxis tickFormatter={(value) => formatCurrency(value)} />
-              <Tooltip
-                labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                formatter={(value: number) => [formatCurrency(value), "Revenue"]}
-              />
-              <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="space-y-2">
+            {analytics.revenue_trend.slice(-7).map((item, index) => (
+              <div key={index} className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+                <div className="flex items-center gap-2 flex-1 ml-4">
+                  <div className="flex-1 bg-muted rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full"
+                      style={{
+                        width: `${Math.min(
+                          (item.revenue / Math.max(...analytics.revenue_trend.map((d) => d.revenue))) * 100,
+                          100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium">{formatCurrency(item.revenue)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -223,15 +228,27 @@ export function PaymentAnalytics() {
             <CardDescription>Breakdown by payment method</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={analytics.payment_methods}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="method" />
-                <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                <Tooltip formatter={(value: number) => [formatCurrency(value), "Revenue"]} />
-                <Bar dataKey="revenue" fill="#2563eb" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-3">
+              {analytics.payment_methods.map((method, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="capitalize">{method.method}</span>
+                    <span className="font-medium">{formatCurrency(method.revenue)}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full"
+                      style={{
+                        width: `${Math.min(
+                          (method.revenue / Math.max(...analytics.payment_methods.map((m) => m.revenue))) * 100,
+                          100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>

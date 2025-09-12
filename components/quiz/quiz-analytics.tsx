@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
 interface QuizAnalyticsProps {
   quizId: string
@@ -90,15 +89,27 @@ export function QuizAnalytics({ quizId }: QuizAnalyticsProps) {
           <CardTitle>Score Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={analytics.scoreDistribution}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="range" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-3">
+            {analytics.scoreDistribution?.map((item: any, index: number) => (
+              <div key={index} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{item.range}</span>
+                  <span className="font-medium">{item.count} students</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className="bg-blue-500 h-2 rounded-full"
+                    style={{
+                      width: `${Math.min(
+                        (item.count / Math.max(...analytics.scoreDistribution.map((d: any) => d.count))) * 100,
+                        100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

@@ -69,7 +69,7 @@
     "react-dom": "^18",
     "react-hook-form": "^7.60.0",
     "react-resizable-panels": "^2.1.7",
-    "recharts": "latest",
+    "recharts": "2.15.4",
     "resend": "latest",
     "snappy": "latest",
     "socks": "latest",

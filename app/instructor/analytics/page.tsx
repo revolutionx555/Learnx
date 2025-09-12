@@ -1,30 +1,9 @@
-"use client" // Added client directive for Recharts components
+"use client"
 
-import { useEffect, useState } from "react" // Added React hooks for client-side data fetching
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-} from "recharts"
 import { Target, Award, Activity, Eye, Loader2 } from "lucide-react"
 
 async function getAnalyticsData() {
@@ -161,15 +140,23 @@ export default function AnalyticsPage() {
                 <CardDescription>Track how students progress through your courses</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData.completionRates}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="courseName" angle={-45} textAnchor="end" height={80} />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`${value}%`, "Completion Rate"]} />
-                    <Bar dataKey="completionRate" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="space-y-3">
+                  {analyticsData.completionRates.length > 0 ? (
+                    analyticsData.completionRates.map((course, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="truncate">{course.courseName}</span>
+                          <span className="font-medium">{course.completionRate}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div className="bg-primary h-2 rounded-full" style={{ width: `${course.completionRate}%` }} />
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">No completion data available</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -179,15 +166,33 @@ export default function AnalyticsPage() {
                 <CardDescription>When your students are most active</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={analyticsData.studentActivity}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`${value}`, "Active Students"]} />
-                    <Line type="monotone" dataKey="activeStudents" stroke="#8884d8" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="space-y-2">
+                  {analyticsData.studentActivity.length > 0 ? (
+                    analyticsData.studentActivity.slice(0, 12).map((activity, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">{activity.hour}:00</span>
+                        <div className="flex items-center gap-2 flex-1 ml-4">
+                          <div className="flex-1 bg-muted rounded-full h-2">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min(
+                                  (activity.activeStudents /
+                                    Math.max(...analyticsData.studentActivity.map((a) => a.activeStudents))) *
+                                    100,
+                                  100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{activity.activeStudents}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">No activity data available</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -241,15 +246,18 @@ export default function AnalyticsPage() {
                 <CardDescription>How students interact with your content</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RadarChart data={analyticsData.engagementMetrics}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="metric" />
-                    <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                    <Radar name="Score" dataKey="score" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
-                    <Tooltip />
-                  </RadarChart>
-                </ResponsiveContainer>
+                <div className="grid grid-cols-2 gap-4">
+                  {analyticsData.engagementMetrics.length > 0 ? (
+                    analyticsData.engagementMetrics.map((metric, index) => (
+                      <div key={index} className="text-center p-4 bg-muted rounded-lg">
+                        <div className="text-2xl font-bold">{metric.score}%</div>
+                        <div className="text-sm text-muted-foreground">{metric.metric}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="col-span-2 text-center text-muted-foreground py-8">No engagement data available</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -259,15 +267,31 @@ export default function AnalyticsPage() {
                 <CardDescription>Average time students spend on your courses</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={analyticsData.timeSpentData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="week" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`${value} hours`, "Time Spent"]} />
-                    <Area type="monotone" dataKey="hours" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="space-y-3">
+                  {analyticsData.timeSpentData.length > 0 ? (
+                    analyticsData.timeSpentData.slice(-8).map((data, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Week {data.week}</span>
+                        <div className="flex items-center gap-2 flex-1 ml-4">
+                          <div className="flex-1 bg-muted rounded-full h-2">
+                            <div
+                              className="bg-green-500 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min(
+                                  (data.hours / Math.max(...analyticsData.timeSpentData.map((d) => d.hours))) * 100,
+                                  100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{data.hours}h</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">No time data available</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -278,24 +302,18 @@ export default function AnalyticsPage() {
               <CardDescription>How students access your courses</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={analyticsData.deviceStats}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="percentage"
-                    label={({ name, percentage }) => `${name} ${percentage}%`}
-                  >
-                    {analyticsData.deviceStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={`hsl(${index * 120}, 70%, 60%)`} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="grid grid-cols-3 gap-4">
+                {analyticsData.deviceStats.length > 0 ? (
+                  analyticsData.deviceStats.map((device, index) => (
+                    <div key={index} className="text-center p-4 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold">{device.percentage}%</div>
+                      <div className="text-sm text-muted-foreground">{device.name}</div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="col-span-3 text-center text-muted-foreground py-8">No device data available</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

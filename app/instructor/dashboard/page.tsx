@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Users, DollarSign, BookOpen, TrendingUp, Plus, Edit, Eye, BarChart3, PieChart, Activity } from "lucide-react"
 import { CourseCreationForm } from "@/components/instructor/course-creation-form"
 import { useAuth } from "@/hooks/use-auth"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 
 interface Course {
   id: string
@@ -329,16 +328,26 @@ export default function InstructorDashboard() {
               </CardHeader>
               <CardContent>
                 {revenueChartData.length > 0 ? (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={revenueChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`$${value}`, "Revenue"]} />
-                        <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <div className="space-y-3">
+                    {revenueChartData.slice(-6).map((item, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">{item.month}</span>
+                        <div className="flex items-center gap-2 flex-1 ml-4">
+                          <div className="flex-1 bg-slate-100 rounded-full h-3">
+                            <div
+                              className="bg-blue-500 h-3 rounded-full"
+                              style={{
+                                width: `${Math.min(
+                                  (item.revenue / Math.max(...revenueChartData.map((d) => d.revenue))) * 100,
+                                  100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-slate-900">${item.revenue.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="h-64 flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg">
@@ -362,16 +371,28 @@ export default function InstructorDashboard() {
               </CardHeader>
               <CardContent>
                 {dashboardData?.coursePerformance && dashboardData.coursePerformance.length > 0 ? (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dashboardData.coursePerformance.slice(0, 5)}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="title" angle={-45} textAnchor="end" height={80} />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="enrollments" fill="#10b981" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div className="space-y-3">
+                    {dashboardData.coursePerformance.slice(0, 5).map((course, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600 truncate">{course.title}</span>
+                        <div className="flex items-center gap-2 flex-1 ml-4">
+                          <div className="flex-1 bg-slate-100 rounded-full h-3">
+                            <div
+                              className="bg-green-500 h-3 rounded-full"
+                              style={{
+                                width: `${Math.min(
+                                  (course.enrollments /
+                                    Math.max(...dashboardData.coursePerformance.map((c) => c.enrollments))) *
+                                    100,
+                                  100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-slate-900">{course.enrollments} students</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="h-64 flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 rounded-lg">

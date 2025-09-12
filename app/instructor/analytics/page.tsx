@@ -1,3 +1,6 @@
+"use client" // Added client directive for Recharts components
+
+import { useEffect, useState } from "react" // Added React hooks for client-side data fetching
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -22,11 +25,11 @@ import {
   PolarRadiusAxis,
   Radar,
 } from "recharts"
-import { Target, Award, Activity, Eye } from "lucide-react"
+import { Target, Award, Activity, Eye, Loader2 } from "lucide-react"
 
 async function getAnalyticsData() {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/instructor/analytics`, {
+    const response = await fetch("/api/instructor/analytics", {
       cache: "no-store",
     })
     if (!response.ok) throw new Error("Failed to fetch analytics data")
@@ -51,8 +54,40 @@ async function getAnalyticsData() {
   }
 }
 
-export default async function AnalyticsPage() {
-  const analyticsData = await getAnalyticsData()
+export default function AnalyticsPage() {
+  const [analyticsData, setAnalyticsData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getAnalyticsData()
+        setAnalyticsData(data)
+      } catch (error) {
+        console.error("Failed to fetch analytics:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!analyticsData) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">Failed to load analytics data</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

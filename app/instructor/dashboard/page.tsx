@@ -6,20 +6,10 @@ import { ProtectedRoute } from "@/components/auth/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
-import {
-  Users,
-  DollarSign,
-  BookOpen,
-  TrendingUp,
-  Plus,
-  Edit,
-  Eye,
-  BarChart3,
-  PieChart,
-  Activity,
-} from "lucide-react"
+import { Users, DollarSign, BookOpen, TrendingUp, Plus, Edit, Eye, BarChart3, PieChart, Activity } from "lucide-react"
 import { CourseCreationForm } from "@/components/instructor/course-creation-form"
 import { useAuth } from "@/hooks/use-auth"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 
 interface Course {
   id: string
@@ -36,49 +26,123 @@ interface Course {
   created_at: string
 }
 
+interface DashboardData {
+  overview: {
+    totalStudents: number
+    totalRevenue: number
+    activeCourses: number
+    totalCourses: number
+    averageRating: number
+    totalReviews: number
+  }
+  monthlyRevenue: Array<{
+    _id: { year: number; month: number }
+    revenue: number
+    count: number
+  }>
+  coursePerformance: Array<{
+    id: string
+    title: string
+    enrollments: number
+    revenue: number
+    rating: number
+    reviews: number
+    status: string
+  }>
+  recentActivity: {
+    newEnrollments: number
+    newReviews: number
+  }
+  growth: {
+    studentsGrowth: string
+    revenueGrowth: string
+    coursesGrowth: string
+  }
+}
+
 export default function InstructorDashboard() {
   const { user } = useAuth()
   const [courses, setCourses] = useState<Course[]>([])
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
 
-  const fetchCourses = async () => {
+  const fetchDashboardData = async () => {
     if (!user) return
 
     try {
       const token = localStorage.getItem("auth_token")
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
-      const response = await fetch(`/api/courses?instructor_id=${user.id}`, { headers })
-      if (response.ok) {
-        const coursesData = await response.json()
+      const [coursesResponse, dashboardResponse] = await Promise.all([
+        fetch(`/api/courses?instructor_id=${user.id}`, { headers }),
+        fetch(`/api/instructor/dashboard?instructor_id=${user.id}`, { headers }),
+      ])
+
+      if (coursesResponse.ok) {
+        const coursesData = await coursesResponse.json()
         const coursesList = coursesData.courses || coursesData.data || []
         setCourses(coursesList)
-      } else {
-        setCourses([])
+      }
+
+      if (dashboardResponse.ok) {
+        const dashboardResult = await dashboardResponse.json()
+        setDashboardData(dashboardResult.data)
       }
     } catch (error) {
-      console.log("Courses API error, using fallback:", error)
-      setCourses([])
+      console.log("Dashboard API error:", error)
+      const totalStudents = courses.reduce((sum, course) => sum + (course.enrollment_count || 0), 0)
+      const totalRevenue = courses.reduce(
+        (sum, course) => sum + (course.price || 0) * (course.enrollment_count || 0),
+        0,
+      )
+      const activeCourses = courses.filter((course) => course.status === "published").length
+      const averageRating =
+        courses.length > 0 ? courses.reduce((sum, course) => sum + (course.average_rating || 0), 0) / courses.length : 0
+
+      setDashboardData({
+        overview: {
+          totalStudents,
+          totalRevenue,
+          activeCourses,
+          totalCourses: courses.length,
+          averageRating,
+          totalReviews: courses.reduce((sum, course) => sum + (course.review_count || 0), 0),
+        },
+        monthlyRevenue: [],
+        coursePerformance: [],
+        recentActivity: { newEnrollments: 0, newReviews: 0 },
+        growth: { studentsGrowth: "0%", revenueGrowth: "0%", coursesGrowth: "0%" },
+      })
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchCourses()
+    fetchDashboardData()
   }, [user])
 
   const handleCourseCreated = () => {
     setShowCreateForm(false)
-    fetchCourses()
+    fetchDashboardData()
   }
 
-  const totalStudents = courses.reduce((sum, course) => sum + (course.enrollment_count || 0), 0)
-  const totalRevenue = courses.reduce((sum, course) => sum + (course.price || 0) * (course.enrollment_count || 0), 0)
-  const activeCourses = courses.filter((course) => course.status === "published").length
-  const averageRating =
-    courses.length > 0 ? courses.reduce((sum, course) => sum + (course.average_rating || 0), 0) / courses.length : 0
+  const overview = dashboardData?.overview || {
+    totalStudents: 0,
+    totalRevenue: 0,
+    activeCourses: 0,
+    totalCourses: 0,
+    averageRating: 0,
+    totalReviews: 0,
+  }
+
+  const revenueChartData =
+    dashboardData?.monthlyRevenue.map((item) => ({
+      month: `${item._id.year}-${String(item._id.month).padStart(2, "0")}`,
+      revenue: item.revenue,
+      enrollments: item.count,
+    })) || []
 
   return (
     <ProtectedRoute allowedRoles={["instructor"]}>
@@ -153,18 +217,20 @@ export default function InstructorDashboard() {
                     <Users className="h-6 w-6 text-blue-600" />
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-900">{totalStudents.toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-slate-900">{overview.totalStudents.toLocaleString()}</div>
                     <div className="text-sm text-slate-500">Total Students</div>
                   </div>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
                   <div
                     className="bg-blue-600 h-2 rounded-full"
-                    style={{ width: totalStudents > 0 ? "75%" : "0%" }}
+                    style={{ width: overview.totalStudents > 0 ? "75%" : "0%" }}
                   ></div>
                 </div>
                 <div className="text-xs text-slate-500 mt-2">
-                  {totalStudents > 0 ? "+12% from last month" : "Create your first course to get started"}
+                  {overview.totalStudents > 0
+                    ? `${dashboardData?.growth.studentsGrowth || "+12%"} from last month`
+                    : "Create your first course to get started"}
                 </div>
               </CardContent>
             </Card>
@@ -177,18 +243,20 @@ export default function InstructorDashboard() {
                     <DollarSign className="h-6 w-6 text-green-600" />
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-900">${totalRevenue.toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-slate-900">${overview.totalRevenue.toLocaleString()}</div>
                     <div className="text-sm text-slate-500">Total Revenue</div>
                   </div>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
                   <div
                     className="bg-green-600 h-2 rounded-full"
-                    style={{ width: totalRevenue > 0 ? "85%" : "0%" }}
+                    style={{ width: overview.totalRevenue > 0 ? "85%" : "0%" }}
                   ></div>
                 </div>
                 <div className="text-xs text-slate-500 mt-2">
-                  {totalRevenue > 0 ? "+8% from last month" : "Revenue will appear after course sales"}
+                  {overview.totalRevenue > 0
+                    ? `${dashboardData?.growth.revenueGrowth || "+8%"} from last month`
+                    : "Revenue will appear after course sales"}
                 </div>
               </CardContent>
             </Card>
@@ -201,18 +269,20 @@ export default function InstructorDashboard() {
                     <BookOpen className="h-6 w-6 text-purple-600" />
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-900">{activeCourses}</div>
+                    <div className="text-2xl font-bold text-slate-900">{overview.activeCourses}</div>
                     <div className="text-sm text-slate-500">Active Courses</div>
                   </div>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2">
                   <div
                     className="bg-purple-600 h-2 rounded-full"
-                    style={{ width: activeCourses > 0 ? "60%" : "0%" }}
+                    style={{ width: overview.activeCourses > 0 ? "60%" : "0%" }}
                   ></div>
                 </div>
                 <div className="text-xs text-slate-500 mt-2">
-                  {courses.length > 0 ? `${courses.length - activeCourses} drafts` : "No courses created yet"}
+                  {overview.totalCourses > 0
+                    ? `${overview.totalCourses - overview.activeCourses} drafts`
+                    : "No courses created yet"}
                 </div>
               </CardContent>
             </Card>
@@ -226,7 +296,7 @@ export default function InstructorDashboard() {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-slate-900">
-                      {averageRating > 0 ? averageRating.toFixed(1) : "N/A"}
+                      {overview.averageRating > 0 ? overview.averageRating.toFixed(1) : "N/A"}
                     </div>
                     <div className="text-sm text-slate-500">Avg. Rating</div>
                   </div>
@@ -234,11 +304,13 @@ export default function InstructorDashboard() {
                 <div className="w-full bg-slate-100 rounded-full h-2">
                   <div
                     className="bg-orange-600 h-2 rounded-full"
-                    style={{ width: averageRating > 0 ? `${(averageRating / 5) * 100}%` : "0%" }}
+                    style={{ width: overview.averageRating > 0 ? `${(overview.averageRating / 5) * 100}%` : "0%" }}
                   ></div>
                 </div>
                 <div className="text-xs text-slate-500 mt-2">
-                  {averageRating > 0 ? "Excellent performance" : "Ratings will appear after course reviews"}
+                  {overview.averageRating > 0
+                    ? `${overview.totalReviews} reviews`
+                    : "Ratings will appear after course reviews"}
                 </div>
               </CardContent>
             </Card>
@@ -256,37 +328,59 @@ export default function InstructorDashboard() {
                 <CardDescription>Monthly revenue performance</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg">
-                  <div className="text-center">
-                    <BarChart3 className="h-12 w-12 text-blue-400 mx-auto mb-2" />
-                    <p className="text-slate-500">
-                      {totalRevenue > 0 ? "Revenue chart visualization" : "Revenue analytics will appear after sales"}
-                    </p>
+                {revenueChartData.length > 0 ? (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={revenueChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [`$${value}`, "Revenue"]} />
+                        <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-                </div>
+                ) : (
+                  <div className="h-64 flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg">
+                    <div className="text-center">
+                      <BarChart3 className="h-12 w-12 text-blue-400 mx-auto mb-2" />
+                      <p className="text-slate-500">Revenue analytics will appear after sales</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Student Engagement */}
+            {/* Course Performance */}
             <Card className="bg-white border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <PieChart className="h-5 w-5 text-green-600" />
-                  Student Engagement
+                  Course Performance
                 </CardTitle>
-                <CardDescription>Course completion rates</CardDescription>
+                <CardDescription>Top performing courses by enrollment</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 rounded-lg">
-                  <div className="text-center">
-                    <PieChart className="h-12 w-12 text-green-400 mx-auto mb-2" />
-                    <p className="text-slate-500">
-                      {totalStudents > 0
-                        ? "Engagement metrics"
-                        : "Student engagement data will appear after enrollments"}
-                    </p>
+                {dashboardData?.coursePerformance && dashboardData.coursePerformance.length > 0 ? (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dashboardData.coursePerformance.slice(0, 5)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="title" angle={-45} textAnchor="end" height={80} />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="enrollments" fill="#10b981" />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                </div>
+                ) : (
+                  <div className="h-64 flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 rounded-lg">
+                    <div className="text-center">
+                      <PieChart className="h-12 w-12 text-green-400 mx-auto mb-2" />
+                      <p className="text-slate-500">Course performance data will appear after enrollments</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

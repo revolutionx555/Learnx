@@ -1,152 +1,45 @@
-"use client"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { X } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
-import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, X, Upload, ImageIcon, VideoIcon } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
-
-interface CourseCreationFormProps {
-  onClose: () => void
-  onSuccess: () => void
-}
-
-const categories = [
-  "Programming",
-  "Design",
-  "Business",
-  "Marketing",
-  "Data Science",
-  "Photography",
-  "Music",
-  "Language",
-  "Health & Fitness",
-  "Personal Development",
-]
-
-export function CourseCreationForm({ onClose, onSuccess }: CourseCreationFormProps) {
-  const { user } = useAuth()
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [imageUploading, setImageUploading] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string>("")
-  const [videoUploading, setVideoUploading] = useState(false)
-  const [selectedVideo, setSelectedVideo] = useState<File | null>(null)
-  const [videoPreview, setVideoPreview] = useState<string>("")
-
+export function CourseCreationForm({ onClose, onSuccess }) {
+  const { user } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     title: "",
-    description: "",
     short_description: "",
+    description: "",
     category: "",
-    price: "",
     difficulty_level: "",
+    price: "",
     thumbnail_url: "",
-    promo_video_url: "",
-  })
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Upload thumbnail image logic
-  const handleImageUpload = async (file: File) => {
-    setImageUploading(true)
-    try {
-      const tempCourseId = `temp-${Date.now()}`
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("courseId", tempCourseId)
+  const validate = () => {
+    if (!formData.title) return "Title is required.";
+    if (!formData.short_description) return "Short description is required.";
+    if (!formData.category) return "Category is required.";
+    if (!formData.difficulty_level) return "Difficulty level is required.";
+    return "";
+  };
 
-      const response = await fetch("/api/upload/course-image", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-        },
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to upload image")
-      }
-
-      const result = await response.json()
-      setFormData((prev) => ({ ...prev, thumbnail_url: result.url }))
-      setImagePreview(result.url)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload image")
-    } finally {
-      setImageUploading(false)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    const err = validate();
+    if (err) {
+      setError(err);
+      return;
     }
-  }
-
-  // Upload promo video logic (stub for Mux; replace with real upload logic)
-  const handleVideoUpload = async (file: File) => {
-    setVideoUploading(true)
-    try {
-      const tempCourseId = `temp-${Date.now()}`
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("courseId", tempCourseId)
-
-      const response = await fetch("/api/upload/course-promo-video", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-        },
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to upload promo video")
-      }
-
-      const result = await response.json()
-      setFormData((prev) => ({ ...prev, promo_video_url: result.url }))
-      setVideoPreview(result.url)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload promo video")
-    } finally {
-      setVideoUploading(false)
-    }
-  }
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setSelectedImage(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-      handleImageUpload(file)
-    }
-  }
-
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setSelectedVideo(file)
-      setVideoPreview("")
-      handleVideoUpload(file)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user) return
-
-    setError("")
-    setLoading(true)
-
+    setLoading(true);
     try {
       const response = await fetch("/api/courses", {
         method: "POST",
@@ -160,26 +53,25 @@ export function CourseCreationForm({ onClose, onSuccess }: CourseCreationFormPro
           instructor_id: user.id,
           status: "draft",
         }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to create course")
+      });
+      const course = await response.json();
+      if (!response.ok || !course.id) {
+        setError(course.error || "Failed to create course");
+        setLoading(false);
+        return;
       }
-
-      const course = await response.json()
-      onSuccess()
-      router.push(`/instructor/courses/${course.id}/edit`)
+      onSuccess && onSuccess();
+      router.push(`/instructor/courses/${course.id}/manage`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create course")
+      setError(err instanceof Error ? err.message : "Failed to create course");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const updateFormData = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+  const updateFormData = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -201,7 +93,6 @@ export function CourseCreationForm({ onClose, onSuccess }: CourseCreationFormPro
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-
           <div className="space-y-2">
             <Label htmlFor="title">Course Title *</Label>
             <Input
@@ -213,264 +104,76 @@ export function CourseCreationForm({ onClose, onSuccess }: CourseCreationFormPro
               disabled={loading}
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="short_description">Short Description *</Label>
             <Input
               id="short_description"
-              placeholder="Brief description for course cards (max 100 characters)"
+              placeholder="A brief summary of the course"
               value={formData.short_description}
               onChange={(e) => updateFormData("short_description", e.target.value)}
-              maxLength={100}
               required
               disabled={loading}
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="description">Full Description</Label>
-            <Textarea
+            <Input
               id="description"
-              placeholder="Detailed course description, what students will learn, prerequisites..."
+              placeholder="Full course description"
               value={formData.description}
               onChange={(e) => updateFormData("description", e.target.value)}
-              rows={4}
               disabled={loading}
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => updateFormData("category", value)}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category.toLowerCase()}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="difficulty_level">Difficulty Level *</Label>
-              <Select
-                value={formData.difficulty_level}
-                onValueChange={(value) => updateFormData("difficulty_level", value)}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="beginner">Beginner</SelectItem>
-                  <SelectItem value="intermediate">Intermediate</SelectItem>
-                  <SelectItem value="advanced">Advanced</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category *</Label>
+            <Input
+              id="category"
+              placeholder="e.g., Web Development"
+              value={formData.category}
+              onChange={(e) => updateFormData("category", e.target.value)}
+              required
+              disabled={loading}
+            />
           </div>
-
+          <div className="space-y-2">
+            <Label htmlFor="difficulty_level">Difficulty Level *</Label>
+            <Input
+              id="difficulty_level"
+              placeholder="e.g., Beginner"
+              value={formData.difficulty_level}
+              onChange={(e) => updateFormData("difficulty_level", e.target.value)}
+              required
+              disabled={loading}
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="price">Price (USD)</Label>
             <Input
               id="price"
               type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00 (Free course)"
+              placeholder="0 (free) or any value"
               value={formData.price}
               onChange={(e) => updateFormData("price", e.target.value)}
               disabled={loading}
+              min={0}
             />
           </div>
-
-          {/* Thumbnail Upload UI */}
           <div className="space-y-2">
-            <Label htmlFor="thumbnail">Course Thumbnail</Label>
-            <div className="space-y-4">
-              {imagePreview ? (
-                <div className="relative">
-                  <img
-                    src={imagePreview || "/placeholder.svg"}
-                    alt="Course thumbnail preview"
-                    className="w-full h-48 object-cover rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="absolute top-2 right-2 bg-transparent"
-                    onClick={() => {
-                      setImagePreview("")
-                      setSelectedImage(null)
-                      setFormData((prev) => ({ ...prev, thumbnail_url: "" }))
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <ImageIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm text-gray-600 mb-2">Upload course thumbnail</p>
-                  <p className="text-xs text-gray-500 mb-4">Recommended: 1280x720px, JPG or PNG</p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageSelect}
-                    className="hidden"
-                    id="thumbnail-upload"
-                    disabled={imageUploading || loading}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById("thumbnail-upload")?.click()}
-                    disabled={imageUploading || loading}
-                  >
-                    {imageUploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose Image
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="thumbnail_url">Or enter image URL</Label>
-                <Input
-                  id="thumbnail_url"
-                  type="url"
-                  placeholder="https://example.com/thumbnail.jpg"
-                  value={formData.thumbnail_url}
-                  onChange={(e) => {
-                    updateFormData("thumbnail_url", e.target.value)
-                    if (e.target.value) {
-                      setImagePreview(e.target.value)
-                    }
-                  }}
-                  disabled={loading}
-                />
-              </div>
-            </div>
+            <Label htmlFor="thumbnail_url">Thumbnail URL</Label>
+            <Input
+              id="thumbnail_url"
+              placeholder="https://example.com/image.png"
+              value={formData.thumbnail_url}
+              onChange={(e) => updateFormData("thumbnail_url", e.target.value)}
+              disabled={loading}
+            />
           </div>
-
-          {/* Promo Video Upload UI */}
-          <div className="space-y-2">
-            <Label htmlFor="promo_video">Promo Video (optional)</Label>
-            <div className="space-y-4">
-              {videoPreview ? (
-                <div className="relative">
-                  <video
-                    src={videoPreview}
-                    controls
-                    className="w-full h-48 object-cover rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="absolute top-2 right-2 bg-transparent"
-                    onClick={() => {
-                      setVideoPreview("")
-                      setSelectedVideo(null)
-                      setFormData((prev) => ({ ...prev, promo_video_url: "" }))
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <VideoIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm text-gray-600 mb-2">Upload promo video</p>
-                  <p className="text-xs text-gray-500 mb-4">Recommended: MP4, less than 50MB</p>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={handleVideoSelect}
-                    className="hidden"
-                    id="promo-video-upload"
-                    disabled={videoUploading || loading}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById("promo-video-upload")?.click()}
-                    disabled={videoUploading || loading}
-                  >
-                    {videoUploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose Video
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="promo_video_url">Or enter video URL</Label>
-                <Input
-                  id="promo_video_url"
-                  type="url"
-                  placeholder="https://example.com/promo.mp4"
-                  value={formData.promo_video_url}
-                  onChange={(e) => {
-                    updateFormData("promo_video_url", e.target.value)
-                    if (e.target.value) {
-                      setVideoPreview(e.target.value)
-                    }
-                  }}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                loading || imageUploading || videoUploading || !formData.title || !formData.category || !formData.difficulty_level
-              }
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Course"
-              )}
-            </Button>
-          </div>
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            {loading ? "Creating..." : "Create Course"}
+          </Button>
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

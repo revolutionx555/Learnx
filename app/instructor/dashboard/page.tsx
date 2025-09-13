@@ -446,11 +446,13 @@ export default function InstructorDashboard() {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Link href={`/courses/${course.id}`} passHref>
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                        {course.status === "published" && (
+                          <Link href={`/courses/${course.id}`} passHref>
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))}

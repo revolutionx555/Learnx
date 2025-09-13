@@ -29,10 +29,10 @@ export default function CourseEditPage() {
     setError("")
     try {
       const [courseResponse, sectionsResponse] = await Promise.all([
-        fetch(`/api/courses/${courseId}`, {
+        fetch(`/api/instructor/courses/${courseId}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` },
         }),
-        fetch(`/api/courses/${courseId}/sections`, {
+        fetch(`/api/instructor/courses/${courseId}/sections`, {
           headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` },
         }),
       ])
@@ -91,7 +91,7 @@ export default function CourseEditPage() {
 
   const totalLessons = sections.reduce(
     (total, section) => total + (Array.isArray(section.lessons) ? section.lessons.length : 0),
-    0
+    0,
   )
 
   if (loading) {
@@ -113,10 +113,14 @@ export default function CourseEditPage() {
       {(error || success) && (
         <div className="mb-4">
           {error && (
-            <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
           {success && (
-            <Alert><AlertDescription>{success}</AlertDescription></Alert>
+            <Alert>
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
           )}
         </div>
       )}
@@ -131,9 +135,7 @@ export default function CourseEditPage() {
           <div>
             <h1 className="text-2xl font-bold">{course.title}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant={course.status === "published" ? "default" : "secondary"}>
-                {course.status}
-              </Badge>
+              <Badge variant={course.status === "published" ? "default" : "secondary"}>{course.status}</Badge>
               <span className="text-sm text-muted-foreground">
                 {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
               </span>
